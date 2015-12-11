@@ -24,15 +24,28 @@ else()
         set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/Release)
 endif()
 
-
-
 # Location of libraries
 set(LIBS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
 
 # *******************************************
+# *********** OpenCV LIBRARY ****************
+# *******************************************
+
+find_package( OpenCV REQUIRED )
+
+file(GLOB
+     OpenCV_DLL
+     ${OpenCV_DIR}/bin/*.dll
+)
+
+# Copy all DLLs in output directory
+MESSAGE("Copy DLLs into ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+file(COPY ${OpenCV_DLL} DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
+
+# *******************************************
 # ********** ARBoardGame.exe  ***************
 # *******************************************
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include ${OpenCV_INCLUDE_DIRS})
 
 file(
 	GLOB_RECURSE
@@ -46,4 +59,6 @@ file(
 	./src/*.cpp
 )
 add_executable( ARBoardGame ${source_files} ${header_files})
-# target_link_libraries(ARBoardGame)
+target_link_libraries(ARBoardGame ${OpenCV_LIBS})
+
+

@@ -6,13 +6,14 @@
 ## Compilation guidelines
 
 1. Make sure QTCreator, CMake, MinGW is installed on your computer
-2. Open QTCreator
-3. In the menu bar, select "File/Open File or Project"
-4. In the Wizard, select "ARBoardGame/src/CMakeFile.txt" and click open.
-5. In the project view, right-click on the project and select "Run CMake".
-6. In the wizard, click on "Run CMake".
-7. Once the CMake project generation is completed (without errors), click on Finish.
-8. Your project is ready to be compiled and run through QTCreator buttons.
+2. Check the guidelines to install third-party library in the lib folder.
+3. Open QTCreator
+4. In the menu bar, select "File/Open File or Project"
+5. In the Wizard, select "ARBoardGame/src/CMakeFile.txt" and click open.
+6. In the project view, right-click on the project and select "Run CMake".
+7. In the wizard, click on "Run CMake".
+8. Once the CMake project generation is completed (without errors), click on Finish.
+9. Your project is ready to be compiled and run through QTCreator buttons.
 
 The CMake compilation step only need to be repeated manually if major changes in the project organization were applied (such as the addition of a new third-party library).
 
