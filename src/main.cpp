@@ -14,12 +14,19 @@
 using namespace cv;
 using namespace cv::xfeatures2d;
 
+#define THRESHOLD 0.4
+#define STEP 0.2
 
-#define NB_IMAGE_PATHS 2
+#define NB_IMAGE_PATHS 8
 String image_paths[][2] = {
-     {"Cat","D:/ARBoardGame/data/cat.png"},
-    {"Bite","D:/ARBoardGame/data/bite.png"}
-
+    {"blaster","D:/ARBoardGame/data/blaster.png"},
+    {"G1","D:/ARBoardGame/data/gatling1.png"},
+    {"G2","D:/ARBoardGame/data/gatling2.png"},
+    {"BR","D:/ARBoardGame/data/batteringram.png"},
+    {"Bow","D:/ARBoardGame/data/bow.png"},
+    {"CB","D:/ARBoardGame/data/crossbow.png"},
+    {"FG","D:/ARBoardGame/data/flaregun.png"},
+    {"Mine","D:/ARBoardGame/data/landmine.png"}
 };
 
 typedef struct Image {
@@ -27,19 +34,22 @@ typedef struct Image {
     Mat img;
     Mat descriptors_object;
     std::vector<KeyPoint> keypoints_object;
+    float detected;
+    Point2f position;
 } Image;
 
-void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scene, std::vector<KeyPoint>& keypoints_scene, Mat& img_object ,Mat& descriptors_object, std::vector<KeyPoint>& keypoints_object){
+void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scene, std::vector<KeyPoint>& keypoints_scene, Image &im){
+
     //-- Step 2: Matching descriptor vectors using FLANN matcher
     FlannBasedMatcher matcher;
     std::vector< DMatch > matches;
 
-    matcher.match( descriptors_object, descriptors_scene, matches );
+    matcher.match( im.descriptors_object, descriptors_scene, matches );
 
     double max_dist = 0; double min_dist = 100;
 
     //-- Quick calculation of max and min distances between keypoints
-    for( int i = 0; i < descriptors_object.rows; i++ )
+    for( int i = 0; i < im.descriptors_object.rows; i++ )
     { double dist = matches[i].distance;
         if( dist < min_dist ) min_dist = dist;
         if( dist > max_dist ) max_dist = dist;
@@ -47,7 +57,7 @@ void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scen
 
     //-- Localize the object
     std::vector< DMatch > good_matches;
-    for( int i = 0; i < descriptors_object.rows; i++ )
+    for( int i = 0; i < im.descriptors_object.rows; i++ )
     { if( matches[i].distance < 4*min_dist )
         { good_matches.push_back( matches[i]); }
     }
@@ -58,50 +68,72 @@ void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scen
     for( size_t i = 0; i < good_matches.size(); i++ )
     {
         //-- Get the keypoints from the good matches
-        obj.push_back( keypoints_object[ good_matches[i].queryIdx ].pt );
+        obj.push_back( im.keypoints_object[ good_matches[i].queryIdx ].pt );
         scene.push_back( keypoints_scene[ good_matches[i].trainIdx ].pt );
     }
 
     Mat Hinv = findHomography( scene, obj, RANSAC );
     Mat img_corrected;
-    warpPerspective(img_scene,img_corrected,Hinv,Size(img_object.cols, img_object.rows));
-
-    imshow(name, img_corrected);
+    warpPerspective(img_scene,img_corrected,Hinv,Size(im.img.cols, im.img.rows));
 
     Mat isDetected;
-    matchTemplate(img_corrected, img_object, isDetected,TM_CCOEFF_NORMED);
+    matchTemplate(img_corrected, im.img, isDetected,TM_CCOEFF_NORMED);
 
-    String detected = (isDetected.at<float>(0,0) > 0.4)?"ok":"nope";
-    std::cout << name << " - " << detected << " " << isDetected.at<float>(0,0) << std::endl;
-
-    // Update main frame
-#define DISPLAY
-#ifdef DISPLAY
-    Mat H = findHomography( obj, scene, RANSAC );
-
-    //-- Get the corners from the image_1 ( the object to be "detected" )
-    std::vector<Point2f> obj_corners(4);
-    obj_corners[0] = cvPoint(0,0);
-    obj_corners[1] = cvPoint( img_object.cols, 0 );
-    obj_corners[2] = cvPoint( img_object.cols, img_object.rows );
-    obj_corners[3] = cvPoint( 0, img_object.rows );
-    std::vector<Point2f> scene_corners(4);
-
-
-
-    perspectiveTransform( obj_corners, scene_corners, H);
-
-
-    // Display points in the frame
-    for(int i =0; i< scene.size(); i++){
-       circle(frame, scene[i], 10,  Scalar(128, 128, 128));
+    if (isDetected.at<float>(0,0) > THRESHOLD){
+        if(im.detected<1.0 ) im.detected+=STEP;
+    } else {
+        if(im.detected>0.0) im.detected-=STEP;
     }
 
-    Scalar color = (isDetected.at<float>(0,0) > 0.4)? Scalar(0, 255, 0): Scalar(0, 0, 255);
-    line( frame, scene_corners[0] , scene_corners[1], color, 4 );
-    line( frame, scene_corners[1], scene_corners[2], color, 4 );
-    line( frame, scene_corners[2], scene_corners[3], color, 4 );
-    line( frame, scene_corners[3], scene_corners[0], color, 4 );
+    // Get image position in frame
+    Mat H = findHomography( obj, scene, RANSAC );
+    std::vector<Point2f> obj_corners(4);
+    obj_corners[0] = cvPoint(0,0);
+    obj_corners[1] = cvPoint( im.img.cols, 0 );
+    obj_corners[2] = cvPoint( im.img.cols, im.img.rows );
+    obj_corners[3] = cvPoint( 0, im.img.rows );
+    std::vector<Point2f> scene_corners(4);
+    perspectiveTransform( obj_corners, scene_corners, H);
+
+    if(im.detected > 0.5 && isDetected.at<float>(0,0) > THRESHOLD){
+        Mat mean_;
+        reduce(scene_corners, mean_, 2, CV_REDUCE_AVG);
+        // convert from Mat to Point - there may be even a simpler conversion,
+        // but I do not know about it.
+        im.position =  Point2f(mean_.at<float>(0,0), mean_.at<float>(0,1));
+    }
+    // std::cout << name << " - " << im.detected << " " << isDetected.at<float>(0,0) << std::endl;
+
+#define DISPLAY
+#ifdef DISPLAY
+    // Display found image
+    //-- Get the corners from the image_1 ( the object to be "detected" )
+
+    Scalar color = (im.detected > 0.5)? Scalar(0, 255, 0): Scalar(0, 0, 255);
+    Mat img_corrected_colored;
+    cvtColor(img_corrected, img_corrected_colored, COLOR_GRAY2BGR);
+
+    line( img_corrected_colored, obj_corners[0] , obj_corners[1], color, 4 );
+    line( img_corrected_colored, obj_corners[1], obj_corners[2], color, 4 );
+    line( img_corrected_colored, obj_corners[2], obj_corners[3], color, 4 );
+    line( img_corrected_colored, obj_corners[3], obj_corners[0], color, 4 );
+    imshow(name, img_corrected_colored);
+
+    // Update main frame
+    // Display points in the frame
+    for(int i =0; i< scene.size(); i++){
+        circle(frame, scene[i], 10,  Scalar(128, 128, 128));
+    }
+
+    if (im.detected > 0.5 && isDetected.at<float>(0,0)) {
+        line( frame, scene_corners[0] , scene_corners[1], color, 4 );
+        line( frame, scene_corners[1], scene_corners[2], color, 4 );
+        line( frame, scene_corners[2], scene_corners[3], color, 4 );
+        line( frame, scene_corners[3], scene_corners[0], color, 4 );
+    }
+    if (im.detected > 0.5) {
+        circle(frame, im.position, 5, color, 3);
+    }
 
 #endif
 }
@@ -121,6 +153,7 @@ int main(int, char**)
         Image im;
 
         // Reference picture
+        im.detected = 0.0;
         im.name = image_paths[i][0];
         im.img = imread( image_paths[i][1], IMREAD_GRAYSCALE );
 
@@ -150,7 +183,7 @@ int main(int, char**)
 
         for(int i = 0; i< images.size();i++){
             try{
-                detectObject(images.at(i).name, frame, img_scene, descriptors_scene, keypoints_scene, images.at(i).img, images.at(i).descriptors_object, images.at(i).keypoints_object);
+                detectObject(images.at(i).name, frame, img_scene, descriptors_scene, keypoints_scene, images.at(i));
             } catch(...){
                 continue;
             }
