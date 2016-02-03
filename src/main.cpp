@@ -100,7 +100,7 @@ std::vector<Entity> ents;
 std::vector<Ennemy> ennemies;
 std::vector<Weapon> weaps;
 Mat frame;
-Mat display(SCREENHEIGHT, SCREENWIDTH, CV_8UC3);
+Mat display(SCREENHEIGHT, SCREENWIDTH, CV_8UC4);
 bool quit = false;
 
 
@@ -121,7 +121,7 @@ void populateGame()
     ents.push_back(Entity("virgin"));
     ents.back().w = 0.0;
     ents.back().r = 0.0;
-    ents.back().img = imread( ROOTPATH "virgin.png", IMREAD_COLOR );
+    ents.back().img = imread( ROOTPATH "virgin.png", IMREAD_UNCHANGED );
 
     // SLOTS
     float radius = SLOT_RADIUS;
@@ -129,32 +129,32 @@ void populateGame()
     ents.push_back(Entity("slot1"));
     ents.back().w = angle;
     ents.back().r = radius;
-    ents.back().img = imread( ROOTPATH "slot1.png", IMREAD_COLOR );
+    ents.back().img = imread( ROOTPATH "slot1.png", IMREAD_UNCHANGED );
     angle += M_PI/3.0;
     ents.push_back(Entity("slot1"));
     ents.back().w = angle;
     ents.back().r = radius;
-    ents.back().img = imread( ROOTPATH "slot2.png", IMREAD_COLOR );
+    ents.back().img = imread( ROOTPATH "slot2.png", IMREAD_UNCHANGED );
     angle += M_PI/3.0;
     ents.push_back(Entity("slot1"));
     ents.back().w = angle;
     ents.back().r = radius;
-    ents.back().img = imread( ROOTPATH "slot3.png", IMREAD_COLOR );
+    ents.back().img = imread( ROOTPATH "slot3.png", IMREAD_UNCHANGED );
     angle += M_PI/3.0;
     ents.push_back(Entity("slot1"));
     ents.back().w = angle;
     ents.back().r = radius;
-    ents.back().img = imread( ROOTPATH "slot4.png", IMREAD_COLOR );
+    ents.back().img = imread( ROOTPATH "slot4.png", IMREAD_UNCHANGED );
     angle += M_PI/3.0;
     ents.push_back(Entity("slot1"));
     ents.back().w = angle;
     ents.back().r = radius;
-    ents.back().img = imread( ROOTPATH "slot5.png", IMREAD_COLOR );
+    ents.back().img = imread( ROOTPATH "slot5.png", IMREAD_UNCHANGED );
     angle += M_PI/3.0;
     ents.push_back(Entity("slot1"));
     ents.back().w = angle;
     ents.back().r = radius;
-    ents.back().img = imread( ROOTPATH "slot6.png", IMREAD_COLOR );
+    ents.back().img = imread( ROOTPATH "slot6.png", IMREAD_UNCHANGED );
 
     // WEAPONS
     image_paths; // See order here
@@ -191,19 +191,19 @@ void spawnEnnemies(float totalTime)
 
     if(getRand()<multiplier*0.03){
         ennemies.push_back(Ennemy());
-        ennemies.back().img = imread( ROOTPATH "roucoups.png", IMREAD_COLOR );
+        ennemies.back().img = imread( ROOTPATH "roucoups.png", IMREAD_UNCHANGED );
         ennemies.back().hp = 50.0;
         ennemies.back().dr = 0.05;
     }
     if(getRand()<multiplier*0.1){
         ennemies.push_back(Ennemy());
-        ennemies.back().img = imread( ROOTPATH "saquedeneu.png", IMREAD_COLOR );
+        ennemies.back().img = imread( ROOTPATH "saquedeneu.png", IMREAD_UNCHANGED );
         ennemies.back().dw = getRand()*0.1;
         ennemies.back().dr = 0.01;
     }
     if(getRand()<multiplier*0.01){
         ennemies.push_back(Ennemy());
-        ennemies.back().img = imread( ROOTPATH "rhinoferos.png", IMREAD_COLOR );
+        ennemies.back().img = imread( ROOTPATH "rhinoferos.png", IMREAD_UNCHANGED );
         ennemies.back().hp = 300.0;
     }
 }
@@ -215,12 +215,12 @@ void drawImage(Mat &src, float x, float y)
     src.copyTo(display(Rect(px, py, src.cols, src.rows)));
 }
 
-void drawLine(float x1, float y1, float x2, float y2, const Scalar& bgr){
+void drawLine(float x1, float y1, float x2, float y2, const Scalar& bgr, int thickness = 1){
     float px1 = ( x1 / 2.0 + 0.5) * SCREENWIDTH;
     float py1 = (-y1 / 2.0 + 0.5) * SCREENHEIGHT;
     float px2 = ( x2 / 2.0 + 0.5) * SCREENWIDTH;
     float py2 = (-y2 / 2.0 + 0.5) * SCREENHEIGHT;
-    line(display, Point(px1, py1), Point(px2, py2), bgr);
+    line(display, Point(px1, py1), Point(px2, py2), bgr, thickness);
 }
 
 void drawWorld()
@@ -240,7 +240,7 @@ void drawWorld()
             drawImage(ennemies.at(i).img, x, y);
             float dy = 1.1*ennemies.at(i).img.rows/SCREENHEIGHT;
             float dx = hp/100.0*ennemies.at(i).img.cols/SCREENWIDTH;
-            drawLine(x-dx, y+dy, x+dx, y+dy, Scalar(0,0,255));
+            drawLine(x-dx, y+dy, x+dx, y+dy, Scalar(0,0,255), 3);
         }
     }
 }
@@ -264,6 +264,7 @@ void handleWeapons(float deltaTime)
             float r = ents.at(slot).r;
             float angle = weaps.at(i).angle;
             float range = weaps.at(i).range;
+            float dps = weaps.at(i).dps;
 
             // Draw cone
             float ang1 = w+angle/2;
@@ -272,10 +273,17 @@ void handleWeapons(float deltaTime)
             float y0 = r * sin(w);
             float x1 = range * cos(ang1);
             float y1 = range * sin(ang1);
-            drawLine(x0,y0,x1,y1, Scalar(255,0,0));
+            Scalar color = Scalar(0,0,255);
+            if(dps < 70.0) {
+                color = Scalar(0,128,255);
+            }
+            if(dps < 40.0) {
+                color = Scalar(0,255,255);
+            }
+            drawLine(x0,y0,x1,y1, color,2);
             float x2 = range * cos(ang2);
             float y2 = range * sin(ang2);
-            drawLine(x0,y0,x2,y2, Scalar(255,0,0));
+            drawLine(x0,y0,x2,y2, color,2);
 
             // Find nearest ennemy
             Ennemy* nearest = NULL;
@@ -307,7 +315,7 @@ void handleWeapons(float deltaTime)
 void handleEndGame(float totalTime){
     for(unsigned int i=0; i<ennemies.size(); i++){
         if(ennemies.at(i).r < 0.0){
-            Mat endgame = imread( ROOTPATH "endgame.png", IMREAD_COLOR );
+            Mat endgame = imread( ROOTPATH "endgame.png", IMREAD_UNCHANGED );
             imshow("GAME OVER", endgame);
             std::cout << "totalTime: " << totalTime << std::endl;
             for(;;){ if(waitKey(30) >= 0) break; }
@@ -330,8 +338,9 @@ void gameplay()
     std::cout << "deltaTime: " << deltaTime << " s\n" << std::endl;
 
     // Create green background
-    display = cv::Scalar(100,200,0);
+    display = cv::Scalar(100,200,0,255);
 
+    //line(display,Point2f(0,0), Point2f(100,100),Scalar(30,30,30));
     handleWeapons(deltaTime);
     spawnEnnemies(totalTime);
     moveEnemies(deltaTime);
