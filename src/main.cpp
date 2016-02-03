@@ -197,20 +197,32 @@ typedef struct WaveElement {
     float dw;
 } WaveElement;
 
-#define NB_WAVE_ELTS 12
+#define NB_WAVES 5
+#define NB_WAVE_ELTS 20
 WaveElement waves[] = {
-    { 1.0f, 1, ROOTPATH "roucoups.png", DEG_TO_RAD(120.0), 0.9, 50.0, 0.05, 0.0},
-    { 2.0f, 2, ROOTPATH "roucoups.png", DEG_TO_RAD( 50.0), 0.9, 50.0, 0.05, 0.0},
+    { 0.0f, 1, ROOTPATH "roucoups.png", DEG_TO_RAD(120.0), 0.9, 50.0, 0.05, 0.0},
+    { 1.0f, 2, ROOTPATH "roucoups.png", DEG_TO_RAD( 50.0), 0.9, 50.0, 0.05, 0.0},
+    { 2.1f, 4, ROOTPATH "triopikeur.png", DEG_TO_RAD(285.0), 0.3, 100.0, 0.001, 0.005},
     { 2.5f, 2, ROOTPATH "saquedeneu.png", DEG_TO_RAD(160.0), 0.9, 50.0, 0.01, 0.1},
     { 3.0f, 1, ROOTPATH "roucoups.png", DEG_TO_RAD(280.0), 0.9, 50.0, 0.05, 0.0},
+
     { 3.0f, 2, ROOTPATH "roucoups.png", DEG_TO_RAD(285.0), 0.9, 50.0, 0.05, 0.0},
     { 5.0f, 1, ROOTPATH "roucoups.png", DEG_TO_RAD(160.0), 0.9, 50.0, 0.05, 0.0},
-    { 6.0f, 2, ROOTPATH "saquedeneu.png", DEG_TO_RAD(260.0), 0.9, 50.0, 0.01, -0.1},
+    { 5.5f, 4, ROOTPATH "triopikeur.png", DEG_TO_RAD(0.0), 0.3, 100.0, 0.001, 0.005},
+    { 5.5f, 4, ROOTPATH "triopikeur.png", DEG_TO_RAD(40.0), 0.3, 100.0, 0.001, 0.005},
+    { 5.5f, 4, ROOTPATH "triopikeur.png", DEG_TO_RAD(80.0), 0.3, 100.0, 0.001, 0.005},
+
+    { 5.5f, 4, ROOTPATH "triopikeur.png", DEG_TO_RAD(120.0), 0.3, 100.0, 0.001, 0.005},
+    { 5.5f, 4, ROOTPATH "triopikeur.png", DEG_TO_RAD(160.0), 0.3, 100.0, 0.001, 0.005},
+    { 6.5f, 2, ROOTPATH "saquedeneu.png", DEG_TO_RAD(260.0), 0.9, 50.0, 0.01, -0.1},
     { 7.5f, 2, ROOTPATH "saquedeneu.png", DEG_TO_RAD(160.0), 0.9, 50.0, 0.01, 0.1},
     { 9.0f, 3, ROOTPATH "rhinoferos.png", DEG_TO_RAD(100.0), 0.9, 300.0, 0.02, 0.0},
+
+    { 9.5f, 4, ROOTPATH "triopikeur.png", DEG_TO_RAD(285.0), 0.3, 100.0, 0.001, 0.005},
     {10.0f, 1, ROOTPATH "roucoups.png", DEG_TO_RAD(300.0), 0.9, 50.0, 0.05, 0.0},
     {15.0f, 1, ROOTPATH "roucoups.png", DEG_TO_RAD(350.0), 0.9, 50.0, 0.05, 0.0},
-    {16.0f, 3, ROOTPATH "rhinoferos.png", DEG_TO_RAD(180.0), 0.9, 300.0, 0.02, 0.0}
+    {16.0f, 3, ROOTPATH "rhinoferos.png", DEG_TO_RAD(180.0), 0.9, 300.0, 0.02, 0.0},
+    {25.0f, 5, ROOTPATH "magicarpe.png", DEG_TO_RAD(0.0), 0.7, 3000.0, 0.01, 0.1}
 };
 
 void spawnEnnemies(float totalTime)
@@ -229,13 +241,25 @@ void spawnEnnemies(float totalTime)
             }
         }
         if(allDead) {
+            ennemies.clear();
+            wave++;
             std::cout << "Starting Wave " << wave << " in 5 seconds." << std::endl;
             init_wave_time = totalTime + 5.0;
-            wave++;
+
             idx=0;
+
+
         }
 
         return;
+    }
+
+    if(wave > NB_WAVES) {
+        Mat endgame = imread( ROOTPATH "victory.png", IMREAD_UNCHANGED );
+        imshow("Victory", endgame);
+        std::cout << "totalTime: " << totalTime << std::endl;
+        for(;;){ if(waitKey(30) >= 0) break; }
+        quit = true;
     }
 
     if(waves[idx].time < (totalTime - init_wave_time)) {
@@ -307,7 +331,9 @@ void drawWorld()
             float hp = ennemies.at(i).hp;
             drawImage(ennemies.at(i).img, x, y);
             float dy = 1.1*ennemies.at(i).img.rows/SCREENHEIGHT;
-            float dx = hp/100.0*ennemies.at(i).img.cols/SCREENWIDTH;
+            float dx = hp/100.0;
+            dx = sqrt(dx);
+            dx = dx*0.05;
             drawLine(x-dx, y+dy, x+dx, y+dy, Scalar(0,0,255), 3);
         }
     }
