@@ -8,25 +8,32 @@
 #include "opencv2/calib3d.hpp"
 #include "opencv2/xfeatures2d.hpp"
 #include "opencv2/opencv.hpp"
+#include <windows.h>
+
+//#define DISPLAY
+#define THRESHOLD 0.4
+#define STEP 0.2
+#define SCREENWIDTH 900
+#define SCREENHEIGHT 900
 
 #define DEBUG std::cout << "Line " << __LINE__ << std::endl
+#define POL_TO_X(w, r) ((r)*cos((w)))
+#define POL_TO_Y(w, r) ((r)*sin((w)))
 
 using namespace cv;
 using namespace cv::xfeatures2d;
 
-#define THRESHOLD 0.4
-#define STEP 0.2
-
-#define NB_IMAGE_PATHS 8
+#define NB_WEAPONS 8
+#define ROOTPATH "D:/ARBoardGame/data/"
 String image_paths[][2] = {
-    {"blaster","D:/ARBoardGame/data/blaster.png"},
-    {"G1","D:/ARBoardGame/data/gatling1.png"},
-    {"G2","D:/ARBoardGame/data/gatling2.png"},
-    {"BR","D:/ARBoardGame/data/batteringram.png"},
-    {"Bow","D:/ARBoardGame/data/bow.png"},
-    {"CB","D:/ARBoardGame/data/crossbow.png"},
-    {"FG","D:/ARBoardGame/data/flaregun.png"},
-    {"Mine","D:/ARBoardGame/data/landmine.png"}
+    {"blaster", ROOTPATH "blaster.png"},
+    {"G1",      ROOTPATH "gatling1.png"},
+    {"G2",      ROOTPATH "gatling2.png"},
+    {"BR",      ROOTPATH "batteringram.png"},
+    {"Bow",     ROOTPATH "bow.png"},
+    {"CB",      ROOTPATH "crossbow.png"},
+    {"FG",      ROOTPATH "flaregun.png"},
+    {"Mine",    ROOTPATH "landmine.png"}
 };
 
 typedef struct Image {
@@ -37,6 +44,156 @@ typedef struct Image {
     float detected;
     Point2f position;
 } Image;
+
+typedef struct Entity {
+    String name;
+    Mat img;
+    float x;
+    float y;
+    float hp;
+    float speed;
+    Entity(String _name){ name = _name; x = 0.0; y = 0.0; hp = 100.0; speed = 0.03; }
+} Entity;
+
+typedef struct Weapon {
+    int slot;
+    float built;
+    float dmgAir;
+    float dmgMagic;
+    float dmgGround;
+    float dps;
+    float angle;
+    float range;
+    Weapon(){ slot = 0; built = 0.0; dmgAir = 0.33; dmgMagic = 0.33; dmgGround = 0.33; dps = 1.0; angle = M_PI/2; range = 0.5;}
+} Weapon;
+
+
+
+// GLOBAL VARS
+
+int startTime = GetTickCount();
+int lastTime = startTime;
+std::vector<Entity> ents;
+std::vector<Weapon> weaps(NB_WEAPONS);
+
+
+
+float getRand()
+{
+    return (rand()%1000)/1000.0;
+}
+
+void populateGame()
+{
+    // VIRGIN
+    ents.push_back(Entity("virgin"));
+    ents.back().x = 0.0;
+    ents.back().y = 0.0;
+    ents.back().img = imread( ROOTPATH "virgin.png", IMREAD_COLOR );
+
+    // SLOTS
+    float radius = 0.15;
+    float angle = M_PI/6.0;
+    ents.push_back(Entity("slot1"));
+    ents.back().x = POL_TO_X(angle, radius);
+    ents.back().y = POL_TO_Y(angle, radius);
+    ents.back().img = imread( ROOTPATH "slot1.png", IMREAD_COLOR );
+    angle += M_PI/3.0;
+    ents.push_back(Entity("slot1"));
+    ents.back().x = POL_TO_X(angle, radius);
+    ents.back().y = POL_TO_Y(angle, radius);
+    ents.back().img = imread( ROOTPATH "slot2.png", IMREAD_COLOR );
+    angle += M_PI/3.0;
+    ents.push_back(Entity("slot1"));
+    ents.back().x = POL_TO_X(angle, radius);
+    ents.back().y = POL_TO_Y(angle, radius);
+    ents.back().img = imread( ROOTPATH "slot3.png", IMREAD_COLOR );
+    angle += M_PI/3.0;
+    ents.push_back(Entity("slot1"));
+    ents.back().x = POL_TO_X(angle, radius);
+    ents.back().y = POL_TO_Y(angle, radius);
+    ents.back().img = imread( ROOTPATH "slot4.png", IMREAD_COLOR );
+    angle += M_PI/3.0;
+    ents.push_back(Entity("slot1"));
+    ents.back().x = POL_TO_X(angle, radius);
+    ents.back().y = POL_TO_Y(angle, radius);
+    ents.back().img = imread( ROOTPATH "slot5.png", IMREAD_COLOR );
+    angle += M_PI/3.0;
+    ents.push_back(Entity("slot1"));
+    ents.back().x = POL_TO_X(angle, radius);
+    ents.back().y = POL_TO_Y(angle, radius);
+    ents.back().img = imread( ROOTPATH "slot6.png", IMREAD_COLOR );
+
+}
+
+void spawnEnnemies(float totalTime)
+{
+    if(getRand()<0.1){
+        float radius = 0.9;
+        float angle = -M_PI + getRand()*M_PI*2.0;
+        ents.push_back(Entity("roucoups"));
+        ents.back().x = POL_TO_X(angle, radius);
+        ents.back().y = POL_TO_Y(angle, radius);
+        ents.back().img = imread( ROOTPATH "roucoups.png", IMREAD_COLOR );
+    }
+}
+
+void drawImage(Mat &src, Mat &dst, float x, float y)
+{
+    int px = ( x / 2.0 + 0.5) * SCREENWIDTH  - src.cols / 2.0;
+    int py = (-y / 2.0 + 0.5) * SCREENHEIGHT - src.rows / 2.0;
+    src.copyTo(dst(Rect(px, py, src.cols, src.rows)));
+}
+
+void drawEntities(Mat &dst)
+{
+    for(unsigned int i=0; i<ents.size(); i++){
+        drawImage(ents.at(i).img, dst, ents.at(i).x, ents.at(i).y);
+    }
+}
+
+void moveEnemies(float deltaTime)
+{
+    for(unsigned int i=7; i<ents.size(); i++){
+        float x = ents.at(i).x;
+        float y = ents.at(i).y;
+        float n = sqrt(x*x+y*y);
+        float newn = n - ents.at(i).speed*deltaTime;
+        ents.at(i).x = x * (newn/n);
+        ents.at(i).y = y * (newn/n);
+    }
+}
+
+
+
+// GAMEPLAY
+
+void gameplay(std::vector<Image> &images)
+{
+    int thisTime = GetTickCount();
+    float deltaTime = (thisTime-lastTime)/1000.0;
+    float totalTime = (thisTime-startTime)/1000.0;
+
+    for(unsigned int i=0; i<images.size(); i++){
+        std::cout << images.at(i).name << ": " << images.at(i).detected << std::endl;
+    }
+    std::cout << "deltaTime: " << deltaTime << " s\n" << std::endl;
+
+    // Create green background
+    Mat display(SCREENHEIGHT, SCREENWIDTH, CV_8UC3);
+    display = cv::Scalar(100,200,0);
+
+    spawnEnnemies(totalTime);
+    moveEnemies(deltaTime);
+    drawEntities(display);
+
+    imshow("display", display);
+    lastTime = thisTime;
+}
+
+
+
+// MAIN, etc.
 
 void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scene, std::vector<KeyPoint>& keypoints_scene, Image &im){
 
@@ -79,11 +236,9 @@ void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scen
     Mat isDetected;
     matchTemplate(img_corrected, im.img, isDetected,TM_CCOEFF_NORMED);
 
-    if (isDetected.at<float>(0,0) > THRESHOLD){
-        if(im.detected<1.0 ) im.detected+=STEP;
-    } else {
-        if(im.detected>0.0) im.detected-=STEP;
-    }
+    float currentDetected = 0.0;
+    if (isDetected.at<float>(0,0) > THRESHOLD){ currentDetected = 1.0; }
+    im.detected = (1.0 - STEP) * im.detected + STEP * currentDetected;
 
     // Get image position in frame
     Mat H = findHomography( obj, scene, RANSAC );
@@ -104,7 +259,6 @@ void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scen
     }
     // std::cout << name << " - " << im.detected << " " << isDetected.at<float>(0,0) << std::endl;
 
-#define DISPLAY
 #ifdef DISPLAY
     // Display found image
     //-- Get the corners from the image_1 ( the object to be "detected" )
@@ -138,6 +292,10 @@ void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scen
 #endif
 }
 
+
+
+// MAIN
+
 int main(int, char**)
 {
     VideoCapture cap(0); // open the default camera
@@ -146,10 +304,12 @@ int main(int, char**)
     if(!cap.isOpened())  // check if we succeeded
         return -1;
 
+    populateGame();
+
     int minHessian = 400;
     Ptr<SURF> detector = SURF::create( minHessian );
     std::vector<Image> images;
-    for(int i =0; i< NB_IMAGE_PATHS; i++){
+    for(int i =0; i< NB_WEAPONS; i++){
         Image im;
 
         // Reference picture
@@ -168,8 +328,6 @@ int main(int, char**)
         images.push_back(im);
     }
 
-
-    namedWindow("edges",1);
     for(;;)
     {
         Mat frame, img_scene;
@@ -188,100 +346,15 @@ int main(int, char**)
                 continue;
             }
         }
-
+#ifdef DISPLAY
         // display frame with detected objects
         imshow("edges", frame);
+#endif
 
+        gameplay(images);
 
         if(waitKey(30) >= 0) break;
-
-
-        //-- Draw lines between the corners (the mapped object in the scene - image_2 )
-        // line( img_matches, scene_corners[0] + Point2f( img_object.cols, 0), scene_corners[1] + Point2f( img_object.cols, 0), Scalar(0, 255, 0), 4 );
-        // line( img_matches, scene_corners[1] + Point2f( img_object.cols, 0), scene_corners[2] + Point2f( img_object.cols, 0), Scalar( 0, 255, 0), 4 );
-        // line( img_matches, scene_corners[2] + Point2f( img_object.cols, 0), scene_corners[3] + Point2f( img_object.cols, 0), Scalar( 0, 255, 0), 4 );
-        // line( img_matches, scene_corners[3] + Point2f( img_object.cols, 0), scene_corners[0] + Point2f( img_object.cols, 0), Scalar( 0, 255, 0), 4 );
-
-
-
-        // Do inverse transform for points
-        // Mat h_inv = H.inv();
-
-        //        std::vector<Point2f> scene_keypoints_inverted;
-        //        Mat invIMG;
-        //        try {
-        //            warpPerspective( img_scene, invIMG, H,  Size(1000,1000) );
-        //        } catch (...) {
-        //            continue;
-        //        }
-
-        //        std::vector<Point2f> scene_keypoints_inverted;
-        //        Mat invIMG;
-        //        try {
-        //            perspectiveTransform(scene, scene_keypoints_inverted, H);
-        //        } catch (...) {
-        //            continue;
-        //        }
-
-
-        //        std::cout << "pts"<<std::endl;
-        //        for(int i = 0; i< scene.size(); i++){
-        //            std::cout << " " << scene[i];
-        //        }
-        //        std::cout << std::endl;
-
-        //        // Count points in
-        //        int nb =0;
-        //        for(int i = 0; i< scene_keypoints_inverted.size(); i++){
-        //            Point2f pt = scene_keypoints_inverted[i];
-        //            if(pt.x > obj_corners[0].x && pt.x < obj_corners[2].x && pt.y > obj_corners[0].y && pt.y < obj_corners[2].y) {
-        //                nb++;
-        //            }
-        //            std::cout << " " << scene_keypoints_inverted[i];
-        //        }
-        //        std::cout << std::endl << "NB pts in = " << nb << "/" << scene_keypoints_inverted.size() << std::endl;
-
-
-
-
     }
-    // the camera will be deinitialized automatically in VideoCapture destructor
+
     return 0;
 }
-
-
-
-/*
-#include <iostream>
-
-#include <QApplication>
-
-
-#include "launcherdialog.hpp"
-
-
-// @function main
-int main( int argc, char** argv )
-{
-    // Create a display window in full screen mode
-    std::cout << "Open launcher QT window" << std::endl;
-
-    QApplication app(argc, argv);
-
-    LauncherDialog launcherDialog;
-
-    launcherDialog.show();
-
-    // TODO: put this in a separate class
-    // 1. Compute the init image descriptors
-    // 2. Display init image in full screen mode
-    // 3. Capture image fromy camera
-    // 4. If the image is not fully detected (check image borders especially)
-    // 4.1 Set a smaller (-5%) new size for the init image
-    // 4.2 Display the init image
-    // 4.3 Go back to step 4
-    // 5. Init image was fully detected: Return the detected display area
-
-    return app.exec();
-}
-*/

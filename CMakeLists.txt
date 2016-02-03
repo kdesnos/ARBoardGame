@@ -11,7 +11,7 @@ cmake_minimum_required(VERSION 2.8.11)
 project(ARBoardGame)
 
 # Set to 1 to activate debug compilation (0 for release)
-set(DEBUG 1)
+set(DEBUG 0)
 
 
 if(${DEBUG})
