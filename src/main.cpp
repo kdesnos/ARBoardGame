@@ -11,31 +11,31 @@
 #include <windows.h>
 
 #define DISPLAY
-//#define DISPLAY_CAM
+#define DISPLAY_CAM
 //#define DISPLAY_SMALL
 #define THRESHOLD 0.4
 #define STEP 0.2
 #define SCREENWIDTH 900
 #define SCREENHEIGHT 900
+#define SLOT_RADIUS 0.15
 
 #define DEBUG std::cout << "Line " << __LINE__ << std::endl
 #define POL_TO_X(w, r) ((r)*cos((w)))
 #define POL_TO_Y(w, r) ((r)*sin((w)))
+#define DEG_TO_RAD(d) ((d)/180*M_PI)
 
 using namespace cv;
 using namespace cv::xfeatures2d;
 
-#define NB_WEAPONS 8
+#define NB_WEAPONS 6
 #define ROOTPATH "D:/ARBoardGame/data/"
 String image_paths[][2] = {
     {"blaster", ROOTPATH "blaster.png"},
     {"G1",      ROOTPATH "gatling1.png"},
-    {"G2",      ROOTPATH "gatling2.png"},
     {"BR",      ROOTPATH "batteringram.png"},
     {"Bow",     ROOTPATH "bow.png"},
     {"CB",      ROOTPATH "crossbow.png"},
-    {"FG",      ROOTPATH "flaregun.png"},
-    {"Mine",    ROOTPATH "landmine.png"}
+    {"FG",      ROOTPATH "flaregun.png"}
 };
 
 
@@ -73,21 +73,20 @@ typedef struct Entity {
 } Entity;
 
 typedef struct Ennemy {
-    String name;
     Mat img;
     float r;
     float w;
     float hp;
     float dr;
     float dw;
-    Ennemy(String _name){ name = _name; r = 0.9; w = getRandAngle(); hp = 50.0 + 100.0*getRand(); dr = 0.05+0.03*getRand(); dw = 0.0; }
+    Ennemy(){ r = 0.9; w = getRandAngle(); hp = 100.0; dr = 0.02; dw = 0.0; }
 } Ennemy;
 
 typedef struct Weapon {
     float dps;
     float angle;
     float range;
-    Weapon(){ dps = 30.0; angle = getRandAngle()*0.5; range = 0.3 + 0.5 * getRand(); }
+    Weapon(){ dps = 30.0; angle = DEG_TO_RAD(60.0); range = 0.5; }
 } Weapon;
 
 
@@ -102,6 +101,7 @@ std::vector<Ennemy> ennemies;
 std::vector<Weapon> weaps;
 Mat frame;
 Mat display(SCREENHEIGHT, SCREENWIDTH, CV_8UC3);
+bool quit = false;
 
 
 
@@ -124,7 +124,7 @@ void populateGame()
     ents.back().img = imread( ROOTPATH "virgin.png", IMREAD_COLOR );
 
     // SLOTS
-    float radius = 0.15;
+    float radius = SLOT_RADIUS;
     float angle = M_PI/6.0;
     ents.push_back(Entity("slot1"));
     ents.back().w = angle;
@@ -157,19 +157,54 @@ void populateGame()
     ents.back().img = imread( ROOTPATH "slot6.png", IMREAD_COLOR );
 
     // WEAPONS
-    for(unsigned int i=0; i<NB_WEAPONS; i++){
-        weaps.push_back(Weapon());
-    }
-
-    assert(weaps.size() == NB_WEAPONS);
+    image_paths; // See order here
+    weaps.push_back(Weapon());
+    weaps.back().dps = 30.0;
+    weaps.back().range = 0.6;
+    weaps.back().angle = DEG_TO_RAD(60.0);
+    weaps.push_back(Weapon());
+    weaps.back().dps = 60.0;
+    weaps.back().range = 0.6;
+    weaps.back().angle = DEG_TO_RAD(90.0);
+    weaps.push_back(Weapon());
+    weaps.back().dps = 300.0;
+    weaps.back().range = 0.25;
+    weaps.back().angle = DEG_TO_RAD(30.0);
+    weaps.push_back(Weapon());
+    weaps.back().dps = 30.0;
+    weaps.back().range = 1.0;
+    weaps.back().angle = DEG_TO_RAD(30.0);
+    weaps.push_back(Weapon());
+    weaps.back().dps = 60.0;
+    weaps.back().range = 0.6;
+    weaps.back().angle = DEG_TO_RAD(30.0);
+    weaps.push_back(Weapon());
+    weaps.back().dps = 30.0;
+    weaps.back().range = 0.3;
+    weaps.back().angle = DEG_TO_RAD(30.0);
 
 }
 
 void spawnEnnemies(float totalTime)
 {
-    if(getRand()<0.1){
-        ennemies.push_back(Ennemy("roucoups"));
+    float multiplier = totalTime/100.0;
+
+    if(getRand()<multiplier*0.03){
+        ennemies.push_back(Ennemy());
         ennemies.back().img = imread( ROOTPATH "roucoups.png", IMREAD_COLOR );
+        ennemies.back().hp = 50.0;
+        ennemies.back().dr = 0.05;
+    }
+    if(getRand()<multiplier*0.1){
+        ennemies.push_back(Ennemy());
+        ennemies.back().img = imread( ROOTPATH "saquedeneu.png", IMREAD_COLOR );
+        ennemies.back().dw = getRand()*0.1;
+        ennemies.back().dr = 0.01;
+    }
+    if(getRand()<multiplier*0.01){
+        ennemies.push_back(Ennemy());
+        ennemies.back().img = imread( ROOTPATH "rhinoferos.png", IMREAD_COLOR );
+        ennemies.back().hp = 300.0;
     }
 }
 
@@ -220,7 +255,7 @@ void moveEnemies(float deltaTime)
     }
 }
 
-void handleWeapons()
+void handleWeapons(float deltaTime)
 {
     for(unsigned int i=0; i<NB_WEAPONS; i++){
         if(images.at(i).detected > 0.5){
@@ -235,11 +270,11 @@ void handleWeapons()
             float ang2 = w-angle/2;
             float x0 = r * cos(w);
             float y0 = r * sin(w);
-            float x1 = x0 + range * cos(ang1);
-            float y1 = y0 + range * sin(ang1);
+            float x1 = range * cos(ang1);
+            float y1 = range * sin(ang1);
             drawLine(x0,y0,x1,y1, Scalar(255,0,0));
-            float x2 = x0 + range * cos(ang2);
-            float y2 = y0 + range * sin(ang2);
+            float x2 = range * cos(ang2);
+            float y2 = range * sin(ang2);
             drawLine(x0,y0,x2,y2, Scalar(255,0,0));
 
             // Find nearest ennemy
@@ -259,7 +294,7 @@ void handleWeapons()
 
             // Hit nearest
             if(nearest && nearest->r < range){
-                nearest->hp -= weaps.at(i).dps;
+                nearest->hp -= weaps.at(i).dps*deltaTime;
                 float x = POL_TO_X(nearest->w, nearest->r);
                 float y = POL_TO_Y(nearest->w, nearest->r);
                 drawLine(x0,y0,x,y, Scalar(255,255,0));
@@ -269,13 +304,14 @@ void handleWeapons()
     }
 }
 
-void handleEndGame(){
+void handleEndGame(float totalTime){
     for(unsigned int i=0; i<ennemies.size(); i++){
         if(ennemies.at(i).r < 0.0){
             Mat endgame = imread( ROOTPATH "endgame.png", IMREAD_COLOR );
             imshow("GAME OVER", endgame);
+            std::cout << "totalTime: " << totalTime << std::endl;
             for(;;){ if(waitKey(30) >= 0) break; }
-            return;
+            quit = true;
         }
     }
 }
@@ -296,10 +332,10 @@ void gameplay()
     // Create green background
     display = cv::Scalar(100,200,0);
 
-    handleWeapons();
+    handleWeapons(deltaTime);
     spawnEnnemies(totalTime);
     moveEnemies(deltaTime);
-    handleEndGame();
+    handleEndGame(totalTime);
     drawWorld();
 
     imshow("display", display);
@@ -485,6 +521,7 @@ int main(int, char**)
 #endif
 
         gameplay();
+        if(quit) return 0;
 
         if(waitKey(30) >= 0) break;
     }
