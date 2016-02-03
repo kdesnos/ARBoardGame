@@ -13,6 +13,7 @@
 #define DISPLAY
 #define DISPLAY_CAM
 //#define DISPLAY_SMALL
+// #define INFINITE_MODE
 #define THRESHOLD 0.4
 #define STEP 0.2
 #define SCREENWIDTH 900
@@ -185,8 +186,74 @@ void populateGame()
 
 }
 
+typedef struct WaveElement {
+    float time;
+    int wave;
+    String path;
+    float w;
+    float r;
+    float hp;
+    float dr;
+    float dw;
+} WaveElement;
+
+#define NB_WAVE_ELTS 12
+WaveElement waves[] = {
+    { 1.0f, 1, ROOTPATH "roucoups.png", DEG_TO_RAD(120.0), 0.9, 50.0, 0.05, 0.0},
+    { 2.0f, 2, ROOTPATH "roucoups.png", DEG_TO_RAD( 50.0), 0.9, 50.0, 0.05, 0.0},
+    { 2.5f, 2, ROOTPATH "saquedeneu.png", DEG_TO_RAD(160.0), 0.9, 50.0, 0.01, 0.1},
+    { 3.0f, 1, ROOTPATH "roucoups.png", DEG_TO_RAD(280.0), 0.9, 50.0, 0.05, 0.0},
+    { 3.0f, 2, ROOTPATH "roucoups.png", DEG_TO_RAD(285.0), 0.9, 50.0, 0.05, 0.0},
+    { 5.0f, 1, ROOTPATH "roucoups.png", DEG_TO_RAD(160.0), 0.9, 50.0, 0.05, 0.0},
+    { 6.0f, 2, ROOTPATH "saquedeneu.png", DEG_TO_RAD(260.0), 0.9, 50.0, 0.01, -0.1},
+    { 7.5f, 2, ROOTPATH "saquedeneu.png", DEG_TO_RAD(160.0), 0.9, 50.0, 0.01, 0.1},
+    { 9.0f, 3, ROOTPATH "rhinoferos.png", DEG_TO_RAD(100.0), 0.9, 300.0, 0.02, 0.0},
+    {10.0f, 1, ROOTPATH "roucoups.png", DEG_TO_RAD(300.0), 0.9, 50.0, 0.05, 0.0},
+    {15.0f, 1, ROOTPATH "roucoups.png", DEG_TO_RAD(350.0), 0.9, 50.0, 0.05, 0.0},
+    {16.0f, 3, ROOTPATH "rhinoferos.png", DEG_TO_RAD(180.0), 0.9, 300.0, 0.02, 0.0}
+};
+
 void spawnEnnemies(float totalTime)
 {
+#ifndef INFINITE_MODE
+    static int idx = 0;
+    static float init_wave_time = 0.0;
+    static int wave = 1;
+
+    if(idx >= NB_WAVE_ELTS) {
+        bool allDead = true;
+        for(int i = 0; i< ennemies.size(); i++){
+            if(ennemies.at(i).hp > 0.0){
+                allDead = false;
+                break;
+            }
+        }
+        if(allDead) {
+            std::cout << "Starting Wave " << wave << " in 5 seconds." << std::endl;
+            init_wave_time = totalTime + 5.0;
+            wave++;
+            idx=0;
+        }
+
+        return;
+    }
+
+    if(waves[idx].time < (totalTime - init_wave_time)) {
+        ennemies.push_back(Ennemy());
+        ennemies.back().img = imread( waves[idx].path, IMREAD_UNCHANGED );
+        ennemies.back().r = waves[idx].r;
+        ennemies.back().w = waves[idx].w;
+        ennemies.back().hp = waves[idx].hp;
+        ennemies.back().dr = waves[idx].dr;
+        ennemies.back().dw = waves[idx].dw;
+        idx++;
+    }
+
+    while(waves[idx].wave > wave){
+        idx++;
+    };
+
+#else
     float multiplier = totalTime/100.0;
 
     if(getRand()<multiplier*0.03){
@@ -206,6 +273,7 @@ void spawnEnnemies(float totalTime)
         ennemies.back().img = imread( ROOTPATH "rhinoferos.png", IMREAD_UNCHANGED );
         ennemies.back().hp = 300.0;
     }
+#endif
 }
 
 void drawImage(Mat &src, float x, float y)
@@ -332,10 +400,10 @@ void gameplay()
     float deltaTime = (thisTime-lastTime)/1000.0;
     float totalTime = (thisTime-startTime)/1000.0;
 
-    for(unsigned int i=0; i<images.size(); i++){
-        std::cout << images.at(i).name << ": " << images.at(i).detected << std::endl;
-    }
-    std::cout << "deltaTime: " << deltaTime << " s\n" << std::endl;
+//    for(unsigned int i=0; i<images.size(); i++){
+//        std::cout << images.at(i).name << ": " << images.at(i).detected << std::endl;
+//    }
+//    std::cout << "deltaTime: " << deltaTime << " s\n" << std::endl;
 
     // Create green background
     display = cv::Scalar(100,200,0,255);
