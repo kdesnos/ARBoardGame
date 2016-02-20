@@ -1,6 +1,10 @@
 #include <stdio.h>
 #include <iostream>
+
+#ifdef __GNUC__
 #include <unistd.h>
+#endif
+
 #include "opencv2/core.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/features2d.hpp"
@@ -9,6 +13,10 @@
 #include "opencv2/xfeatures2d.hpp"
 #include "opencv2/opencv.hpp"
 #include <windows.h>
+
+#ifndef M_PI
+#define M_PI 3.1415926535
+#endif
 
 #define DISPLAY
 #define DISPLAY_CAM

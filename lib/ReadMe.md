@@ -35,3 +35,26 @@
 12. In the opened Wizard, select Visual Studi 14.
 13. Go to the "ARBoardGame/lib/opencv/build/" and open the contained *.sln file.
 14. Build the "CMakeTargets/INSTALL" project. (Both in Debug and Release).
+
+## Qt 5.5 - Visual 2015 64 only
+1. Download QT source from http://www.qt.io/download-open-source/#section-5 (Windows source)
+2. Unzip downloadeds archive in ARBoardGame/lib/qt-5.5.1
+3. In ARBoardGame/lib, create a command file qt.cmd with the following content
+REM Set up \Microsoft Visual Studio 2013, where <arch> is \c amd64, \c x86, etc.
+CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" x64
+SET _ROOT=D:\ARBoardGameVS15\lib\qt-5.5.1
+SET PATH=%_ROOT%\qtbase\bin;%_ROOT%\gnuwin32\bin;%PATH%
+REM Uncomment the below line when using a git checkout of the source repository
+REM SET PATH=%_ROOT%\qtrepotools\bin;%PATH%
+SET QMAKESPEC=win32-msvc2015
+SET _ROOT=
+4. Create a shortcut to the qt.cmd file with following settings
+Target: %SystemRoot%\system32\cmd.exe /E:ON /V:ON /k <ARBOardGameAbsolutePath>\lib\qt.cmd
+Execute in: <ARBOardGameAbsolutePath>\lib\qt-5.5.1
+5. Launch the command line with the shortcut
+6. enter the following command
+> configure.bat -platform win32-msvc2015 -debug -nomake examples -opensource -skip qtwebkit -skip qtwebchannel -skip qtquick1 -skip qtdeclarative
+7. Then
+> nmake
+8. Pray the mighty c++ compilation god for 30 minutes!
+
