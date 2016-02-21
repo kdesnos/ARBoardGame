@@ -37,7 +37,7 @@ using namespace cv;
 using namespace cv::xfeatures2d;
 
 #define NB_WEAPONS 6
-#define ROOTPATH "D:/ARBoardGame/data/"
+#define ROOTPATH "../data/"
 String image_paths[][2] = {
     {"blaster", ROOTPATH "blaster.png"},
     {"G1",      ROOTPATH "gatling1.png"},
