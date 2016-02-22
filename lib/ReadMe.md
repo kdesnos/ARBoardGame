@@ -37,6 +37,7 @@
 14. Build the "CMakeTargets/INSTALL" project. (Both in Debug and Release).
 
 ## Qt 5.5 - Visual 2015 64 only
+(from https://github.com/supamii/QttpServer/blob/qs_dev/WINBUILD.md and http://doc.qt.io/qt-5/windows-building.html)
 1. Download QT source from http://www.qt.io/download-open-source/#section-5 (Windows source)
 2. Unzip downloadeds archive in ARBoardGame/lib/qt-5.5.1
 3. In ARBoardGame/lib, create a command file qt.cmd with the following content

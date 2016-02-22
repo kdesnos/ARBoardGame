@@ -5,6 +5,8 @@
 #include <unistd.h>
 #endif
 
+#include "visionEngine.hpp"
+
 #include "opencv2/core.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/features2d.hpp"
@@ -576,6 +578,10 @@ void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scen
 
 int main(int, char**)
 {
+	VisionEngine ve = VisionEngine();
+
+	ve.initialize();
+
     VideoCapture cap(0); // open the default camera
     //sleep(1);
 
