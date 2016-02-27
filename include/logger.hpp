@@ -1,3 +1,7 @@
+#pragma once 
+
+#include <time.h>
+
 /*!
 * Macro used to format all entry to the log as follows: <br>
 * "[<Time>] message (in <Function>)"

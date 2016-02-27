@@ -1,11 +1,21 @@
 #include "arExceptions.hpp"
 #include "pattern.hpp"
 
-Pattern::Pattern(std::string path)
+Pattern::Pattern(const std::string & name, const std::string & path) throw(...) :
+	_name(name), _image(cv::imread(path, cv::IMREAD_GRAYSCALE))
 {
-	image = cv::imread(path);
-
-	if (!image.data) {
-		throw new FileNotFoundException("Pattern path not found:" + path );
+	// Check whether the image was successfully opened during initialization.
+	if (!_image.data) {
+		throw FileNotFoundException("Pattern path not found:" + path );
 	}
+}
+
+const std::string& Pattern::getName() const throw()
+{
+	return _name;
+}
+
+bool Pattern::operator==(const Pattern & other) const
+{
+	return _name == other._name;
 }

@@ -6,6 +6,8 @@
 #endif
 
 #include "visionEngine.hpp"
+#include "pattern.hpp"
+#include "arExceptions.hpp"
 
 #include "opencv2/core.hpp"
 #include "opencv2/imgproc.hpp"
@@ -578,7 +580,7 @@ void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scen
 
 int main(int, char**)
 {
-	VisionEngine ve = VisionEngine();
+	VisionEngine ve;
 
 	ve.initialize();
 
@@ -593,6 +595,18 @@ int main(int, char**)
     int minHessian = 400;
     Ptr<SURF> detector = SURF::create( minHessian );
     for(int i =0; i< NB_WEAPONS; i++){
+
+		Pattern * pat;
+		
+		try { 
+			pat = new Pattern(image_paths[i][0],image_paths[i][1]);
+		}
+		catch (FileNotFoundException e) {
+			cerr << e.what() << endl;
+		}
+
+		ve.registerPattern(*pat);
+
         Image im;
 
         // Reference picture

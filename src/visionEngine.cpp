@@ -1,11 +1,11 @@
 
-#include <time.h>
 #include "logger.hpp"
 #include "visionEngine.hpp"
 
 using namespace std;
 
-VisionEngine::VisionEngine(ostream & logger) : _logger(logger)
+VisionEngine::VisionEngine(ostream & logger) :
+	_logger(logger), _camera(NULL), _initialized(false)
 {
 	LOG(_logger, "Instantiate VisionEngine");
 }
@@ -49,5 +49,34 @@ bool VisionEngine::initialize() {
 
 bool VisionEngine::isInitialized() const {
 	return _initialized;
+}
+
+bool VisionEngine::registerPattern(Pattern & pattern)
+{
+	// Log
+	LOG(_logger, "Registering pattern " + pattern.getName());
+
+	// Put the pattern in _pattern list
+	_patterns.push_back(pattern);
+
+	return true;
+}
+
+bool VisionEngine::unregisterPattern(const Pattern & pattern)
+{
+	const int originalSize = _patterns.size();
+	// Lambda expression used because operator== of pattern is masked by
+	// std::reference_wrapper.
+	_patterns.remove_if([&pattern](const Pattern& pat) {return pat == pattern; });
+
+	// Check success of the remove: positive if exactly one element was removed
+	const bool success = _patterns.size() == originalSize - 1;
+
+	LOG(_logger, "Unregistering pattern " 
+		+ pattern.getName() 
+		+ ": " 
+		+ ((success) ? "Success" : "Failure"));
+
+	return success;
 }
 
