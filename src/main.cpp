@@ -126,11 +126,11 @@ int getSlot(float x, float y)
 
 void populateGame()
 {
-    // VIRGIN
-    ents.push_back(Entity("virgin"));
+    // CASTLE
+    ents.push_back(Entity("castle"));
     ents.back().w = 0.0;
     ents.back().r = 0.0;
-    ents.back().img = imread( ROOTPATH "virgin.png", IMREAD_UNCHANGED );
+    ents.back().img = imread( ROOTPATH "castle.png", IMREAD_UNCHANGED );
 
     // SLOTS
     float radius = SLOT_RADIUS;
