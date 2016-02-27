@@ -51,12 +51,12 @@ String image_paths[][2] = {
 
 // TOOLS
 
-float getRand()
+double getRand()
 {
     return (rand()%1000)/1000.0;
 }
 
-float getRandAngle(){
+double getRandAngle(){
     return -M_PI + getRand()*M_PI*2.0;
 }
 
@@ -69,32 +69,32 @@ typedef struct Image {
     Mat img;
     Mat descriptors_object;
     std::vector<KeyPoint> keypoints_object;
-    float detected;
+    double detected;
     Point2f position;
 } Image;
 
 typedef struct Entity {
     String name;
     Mat img;
-    float w;
-    float r;
+	double w;
+	double r;
     Entity(String _name){ name = _name; w = 0.0; r = 0.1; }
 } Entity;
 
 typedef struct Ennemy {
     Mat img;
-    float r;
-    float w;
-    float hp;
-    float dr;
-    float dw;
+	double r;
+	double w;
+	double hp;
+	double dr;
+	double dw;
     Ennemy(){ r = 0.9; w = getRandAngle(); hp = 100.0; dr = 0.02; dw = 0.0; }
 } Ennemy;
 
 typedef struct Weapon {
-    float dps;
-    float angle;
-    float range;
+	double dps;
+	double angle;
+	double range;
     Weapon(){ dps = 30.0; angle = DEG_TO_RAD(60.0); range = 0.5; }
 } Weapon;
 
@@ -116,7 +116,7 @@ bool quit = false;
 
 // METHODS
 
-int getSlot(float x, float y)
+int getSlot(double x, double y)
 {
     int slot = (y / frame.rows) > 0.5 ? 3 : 0;
     slot += (x / frame.cols) > 0.66 ? 3 : ((x / frame.cols) > 0.33 ? 2 : 1);
@@ -133,8 +133,8 @@ void populateGame()
     ents.back().img = imread( ROOTPATH "castle.png", IMREAD_UNCHANGED );
 
     // SLOTS
-    float radius = SLOT_RADIUS;
-    float angle = M_PI/6.0;
+	double radius = SLOT_RADIUS;
+	double angle = M_PI/6.0;
     ents.push_back(Entity("slot1"));
     ents.back().w = angle;
     ents.back().r = radius;
@@ -195,14 +195,14 @@ void populateGame()
 }
 
 typedef struct WaveElement {
-    float time;
+	double time;
     int wave;
     String path;
-    float w;
-    float r;
-    float hp;
-    float dr;
-    float dw;
+	double w;
+	double r;
+	double hp;
+	double dr;
+	double dw;
 } WaveElement;
 
 #define NB_WAVES 5
@@ -233,11 +233,11 @@ WaveElement waves[] = {
     {25.0f, 5, ROOTPATH "magicarpe.png", DEG_TO_RAD(0.0), 0.7, 3000.0, 0.01, 0.1}
 };
 
-void spawnEnnemies(float totalTime)
+void spawnEnnemies(double totalTime)
 {
 #ifndef INFINITE_MODE
     static int idx = 0;
-    static float init_wave_time = 0.0;
+    static double init_wave_time = 0.0;
     static int wave = 1;
 
     if(idx >= NB_WAVE_ELTS) {
@@ -286,7 +286,7 @@ void spawnEnnemies(float totalTime)
     };
 
 #else
-    float multiplier = totalTime/100.0;
+	double multiplier = totalTime/100.0;
 
     if(getRand()<multiplier*0.03){
         ennemies.push_back(Ennemy());
@@ -308,38 +308,38 @@ void spawnEnnemies(float totalTime)
 #endif
 }
 
-void drawImage(Mat &src, float x, float y)
+void drawImage(Mat &src, double x, double y)
 {
-    int px = ( x / 2.0 + 0.5) * SCREENWIDTH  - src.cols / 2.0;
-    int py = (-y / 2.0 + 0.5) * SCREENHEIGHT - src.rows / 2.0;
+    int px = (int)(( x / 2.0 + 0.5) * SCREENWIDTH  - src.cols / 2.0);
+    int py = (int)((-y / 2.0 + 0.5) * SCREENHEIGHT - src.rows / 2.0);
     src.copyTo(display(Rect(px, py, src.cols, src.rows)));
 }
 
-void drawLine(float x1, float y1, float x2, float y2, const Scalar& bgr, int thickness = 1){
-    float px1 = ( x1 / 2.0 + 0.5) * SCREENWIDTH;
-    float py1 = (-y1 / 2.0 + 0.5) * SCREENHEIGHT;
-    float px2 = ( x2 / 2.0 + 0.5) * SCREENWIDTH;
-    float py2 = (-y2 / 2.0 + 0.5) * SCREENHEIGHT;
-    line(display, Point(px1, py1), Point(px2, py2), bgr, thickness);
+void drawLine(double x1, double y1, double x2, double y2, const Scalar& bgr, int thickness = 1){
+	double px1 = ( x1 / 2.0 + 0.5) * SCREENWIDTH;
+	double py1 = (-y1 / 2.0 + 0.5) * SCREENHEIGHT;
+	double px2 = ( x2 / 2.0 + 0.5) * SCREENWIDTH;
+	double py2 = (-y2 / 2.0 + 0.5) * SCREENHEIGHT;
+    line(display, Point((int)px1, (int)py1), Point((int)px2, (int)py2), bgr, thickness);
 }
 
 void drawWorld()
 {
     for(unsigned int i=0; i<ents.size(); i++){
-        float w = ents.at(i).w;
-        float r = ents.at(i).r;
+		double w = ents.at(i).w;
+		double r = ents.at(i).r;
         drawImage(ents.at(i).img, POL_TO_X(w,r), POL_TO_Y(w,r));
     }
     for(unsigned int i=0; i<ennemies.size(); i++){
         if(ennemies.at(i).hp > 0.0){
-            float w = ennemies.at(i).w;
-            float r = ennemies.at(i).r;
-            float x = POL_TO_X(w,r);
-            float y = POL_TO_Y(w,r);
-            float hp = ennemies.at(i).hp;
+			double w = ennemies.at(i).w;
+			double r = ennemies.at(i).r;
+			double x = POL_TO_X(w,r);
+			double y = POL_TO_Y(w,r);
+			double hp = ennemies.at(i).hp;
             drawImage(ennemies.at(i).img, x, y);
-            float dy = 1.1*ennemies.at(i).img.rows/SCREENHEIGHT;
-            float dx = hp/100.0;
+			double dy = 1.1*ennemies.at(i).img.rows/SCREENHEIGHT;
+			double dx = hp/100.0;
             dx = sqrt(dx);
             dx = dx*0.05;
             drawLine(x-dx, y+dy, x+dx, y+dy, Scalar(0,0,255), 3);
@@ -347,7 +347,7 @@ void drawWorld()
     }
 }
 
-void moveEnemies(float deltaTime)
+void moveEnemies(double deltaTime)
 {
     for(unsigned int i=0; i<ennemies.size(); i++){
         if(ennemies.at(i).hp > 0.0){
@@ -357,24 +357,24 @@ void moveEnemies(float deltaTime)
     }
 }
 
-void handleWeapons(float deltaTime)
+void handleWeapons(double deltaTime)
 {
     for(unsigned int i=0; i<NB_WEAPONS; i++){
         if(images.at(i).detected > 0.5){
             int slot = getSlot(images.at(i).position.x, images.at(i).position.y);
-            float w = ents.at(slot).w;
-            float r = ents.at(slot).r;
-            float angle = weaps.at(i).angle;
-            float range = weaps.at(i).range;
-            float dps = weaps.at(i).dps;
+            double w = ents.at(slot).w;
+            double r = ents.at(slot).r;
+            double angle = weaps.at(i).angle;
+            double range = weaps.at(i).range;
+            double dps = weaps.at(i).dps;
 
             // Draw cone
-            float ang1 = w+angle/2;
-            float ang2 = w-angle/2;
-            float x0 = r * cos(w);
-            float y0 = r * sin(w);
-            float x1 = range * cos(ang1);
-            float y1 = range * sin(ang1);
+            double ang1 = w+angle/2;
+            double ang2 = w-angle/2;
+            double x0 = r * cos(w);
+            double y0 = r * sin(w);
+            double x1 = range * cos(ang1);
+            double y1 = range * sin(ang1);
             Scalar color = Scalar(0,0,255);
             if(dps < 70.0) {
                 color = Scalar(0,128,255);
@@ -383,15 +383,15 @@ void handleWeapons(float deltaTime)
                 color = Scalar(0,255,255);
             }
             drawLine(x0,y0,x1,y1, color,2);
-            float x2 = range * cos(ang2);
-            float y2 = range * sin(ang2);
+            double x2 = range * cos(ang2);
+            double y2 = range * sin(ang2);
             drawLine(x0,y0,x2,y2, color,2);
 
             // Find nearest ennemy
             Ennemy* nearest = NULL;
             for(unsigned int j=0; j<ennemies.size(); j++){
                 if(ennemies.at(j).hp > 0.0){
-                    float dw = ennemies.at(j).w - w;
+                    double dw = ennemies.at(j).w - w;
                     while(dw <= -M_PI){ dw += 2*M_PI; }
                     while(dw > M_PI){ dw -= 2*M_PI; }
                     if(-angle/2 <= dw && dw <= angle/2){ // In cone
@@ -405,8 +405,8 @@ void handleWeapons(float deltaTime)
             // Hit nearest
             if(nearest && nearest->r < range){
                 nearest->hp -= weaps.at(i).dps*deltaTime;
-                float x = POL_TO_X(nearest->w, nearest->r);
-                float y = POL_TO_Y(nearest->w, nearest->r);
+                double x = POL_TO_X(nearest->w, nearest->r);
+                double y = POL_TO_Y(nearest->w, nearest->r);
                 drawLine(x0,y0,x,y, Scalar(255,255,0));
             }
 
@@ -414,7 +414,7 @@ void handleWeapons(float deltaTime)
     }
 }
 
-void handleEndGame(float totalTime){
+void handleEndGame(double totalTime){
     for(unsigned int i=0; i<ennemies.size(); i++){
         if(ennemies.at(i).r < 0.0){
             Mat endgame = imread( ROOTPATH "endgame.png", IMREAD_UNCHANGED );
@@ -431,8 +431,8 @@ void handleEndGame(float totalTime){
 void gameplay()
 {
     int thisTime = GetTickCount();
-    float deltaTime = (thisTime-lastTime)/1000.0;
-    float totalTime = (thisTime-startTime)/1000.0;
+    double deltaTime = (thisTime-lastTime)/1000.0;
+    double totalTime = (thisTime-startTime)/1000.0;
 
 //    for(unsigned int i=0; i<images.size(); i++){
 //        std::cout << images.at(i).name << ": " << images.at(i).detected << std::endl;
@@ -512,7 +512,7 @@ void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scen
     Mat isDetected;
     matchTemplate(img_corrected, im.img, isDetected,TM_CCOEFF_NORMED);
 
-    float currentDetected = 0.0;
+    double currentDetected = 0.0;
     if (isDetected.at<float>(0,0) > THRESHOLD){ currentDetected = 1.0; }
     im.detected = (1.0 - STEP) * im.detected + STEP * currentDetected;
 
@@ -531,9 +531,9 @@ void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scen
         reduce(scene_corners, mean_, 2, CV_REDUCE_AVG);
         // convert from Mat to Point - there may be even a simpler conversion,
         // but I do not know about it.
-        im.position =  Point2f(mean_.at<float>(0,0), mean_.at<float>(0,1));
+		im.position = Point2f(mean_.at<float>(0, 0), mean_.at<float>(0, 1));
     }
-    // std::cout << name << " - " << im.detected << " " << isDetected.at<float>(0,0) << std::endl;
+    // std::cout << name << " - " << im.detected << " " << isDetected.at<double>(0,0) << std::endl;
 
 #ifdef DISPLAY
     // Display found image
