@@ -513,7 +513,7 @@ void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scen
     matchTemplate(img_corrected, im.img, isDetected,TM_CCOEFF_NORMED);
 
     double currentDetected = 0.0;
-    if (isDetected.at<double>(0,0) > THRESHOLD){ currentDetected = 1.0; }
+    if (isDetected.at<float>(0,0) > THRESHOLD){ currentDetected = 1.0; }
     im.detected = (1.0 - STEP) * im.detected + STEP * currentDetected;
 
     // Get image position in frame
@@ -526,12 +526,12 @@ void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scen
     std::vector<Point2f> scene_corners(4);
     perspectiveTransform( obj_corners, scene_corners, H);
 
-    if(im.detected > 0.5 && isDetected.at<double>(0,0) > THRESHOLD){
+    if(im.detected > 0.5 && isDetected.at<float>(0,0) > THRESHOLD){
         Mat mean_;
         reduce(scene_corners, mean_, 2, CV_REDUCE_AVG);
         // convert from Mat to Point - there may be even a simpler conversion,
         // but I do not know about it.
-        im.position =  Point2f((float)mean_.at<double>(0,0), (float)mean_.at<double>(0,1));
+		im.position = Point2f(mean_.at<float>(0, 0), mean_.at<float>(0, 1));
     }
     // std::cout << name << " - " << im.detected << " " << isDetected.at<double>(0,0) << std::endl;
 
@@ -557,7 +557,7 @@ void detectObject(String name, Mat& frame, Mat& img_scene, Mat& descriptors_scen
         circle(frame, scene[i], 10,  Scalar(128, 128, 128));
     }
 
-    if (im.detected > 0.5 && isDetected.at<double>(0,0)) {
+    if (im.detected > 0.5 && isDetected.at<float>(0,0)) {
         line( frame, scene_corners[0] , scene_corners[1], color, 4 );
         line( frame, scene_corners[1], scene_corners[2], color, 4 );
         line( frame, scene_corners[2], scene_corners[3], color, 4 );
