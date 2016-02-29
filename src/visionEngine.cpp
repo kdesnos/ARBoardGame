@@ -11,7 +11,8 @@ void VisionEngine::_computeKeypointsAndDescriptors(SURFDetectable & detectable) 
 
 VisionEngine::VisionEngine(ostream & logger) :
 	_logger(logger), _camera(NULL), _initialized(false),
-	_exitDetectionLoop(false),
+	_exitDetectionLoop(false), _detectionLoopMutex(),
+	_detectionLoopThread(NULL),
 	_detector(cv::xfeatures2d::SURF::create(MIN_HESSIAN))
 {
 	LOG(_logger, "Instantiate VisionEngine");
@@ -20,13 +21,17 @@ VisionEngine::VisionEngine(ostream & logger) :
 VisionEngine::~VisionEngine() {
 	LOG(_logger, "Delete Vision Engine");
 
-	// Flush the logger.
-	_logger.flush();
+	// Need to wait for thread completion (and hope this won't stall the 
+	// application)
+	stopDetectionThread();
 
 	// Delete the camera (if it was initialized)
 	if (isInitialized()) {
 		delete _camera;
 	}
+	
+	// Flush the logger.
+	_logger.flush();
 }
 
 bool VisionEngine::initialize() {
@@ -72,6 +77,62 @@ bool VisionEngine::registerPattern(Pattern & pattern)
 	return true;
 }
 
+void VisionEngine::setExitDetectionLoop(const bool exit)
+{
+	_exitDetectionLoop = exit;
+}
+
+bool VisionEngine::startDetectionThread()
+{
+	LOG(_logger, "Starting detection thread.");
+	// Check initialization
+	if (!isInitialized()) {
+		LOG(_logger, "Failed to start detection thread because VisionEngine was not initialized.");
+			return false;
+	}
+
+	// Check that loop is not already running
+	if (_detectionLoopThread != NULL) {
+		LOG(_logger, "Failed to start detection thread because detectionLoop is already running.");
+		return false;
+	}
+
+	// Set exitDetectionLoop to false
+	setExitDetectionLoop(false);
+
+	// Start the thread
+	_detectionLoopThread = new thread(&VisionEngine::detectionLoop, this);
+
+	LOG(_logger, "Detection thread started successfully.");
+
+	// Everything went well
+	return true;
+}
+
+bool VisionEngine::stopDetectionThread()
+{
+	LOG(_logger, "Stopping detection thread.");
+
+	// Checkups
+	if (_detectionLoopThread == NULL) {
+		LOG(_logger, "Failed to stop detection thread because no thread was running.");
+		return false;
+	}
+
+	// Set exitDetectionLoop to true 
+	setExitDetectionLoop(true);
+
+	// Wait for thread completion (possibly forever...)
+	_detectionLoopThread->join();
+
+	// Delete the thread.
+	delete _detectionLoopThread;
+	_detectionLoopThread = NULL;
+
+	LOG(_logger, "Detection thread stopped successfully.");
+	return true;
+}
+
 bool VisionEngine::unregisterPattern(const Pattern & pattern)
 {
 	const size_t originalSize = _patterns.size();
@@ -92,6 +153,10 @@ bool VisionEngine::unregisterPattern(const Pattern & pattern)
 
 void VisionEngine::detectionLoop()
 {
+	// Acquire the _detectionLoopMutex (automatically released when exiting 
+	// this context).
+	std::unique_lock<mutex> lockDetectionLoopMutex(_detectionLoopMutex);
+
 	LOG(_logger, "Entering detection loop.");
 	// Exit immediately if the VisionEngine was not initialized
 	if (!isInitialized()) {
@@ -110,5 +175,10 @@ void VisionEngine::detectionLoop()
 		// 2. Search for all registered patterns in the capture frame.
 		// 3. Update the status and position of the detected patterns.
 	} while (!_exitDetectionLoop);
+}
+
+bool VisionEngine::doesExitDetectionLoop() const
+{
+	return _exitDetectionLoop;
 }
 

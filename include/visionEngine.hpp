@@ -6,6 +6,7 @@
 #include <iostream>
 #include <list>
 #include <atomic>
+#include <mutex>
 
 #include "opencv2/opencv.hpp"
 #include "opencv2/xfeatures2d.hpp"
@@ -80,6 +81,18 @@ protected:
 	*/
 	atomic_bool _exitDetectionLoop;
 
+	/**
+	* Mutex used to know if the detectionLoop() is currently running in any 
+	* thread.
+	*/
+	std::mutex _detectionLoopMutex;
+
+
+	/**
+	* Thread used to run the detectionLoop when startDetection loop is called.
+	*/
+	std::thread * _detectionLoopThread;
+
 public:
 	/**
 	* \brief Default constructor for the VisionEngine.
@@ -132,6 +145,37 @@ public:
 	bool registerPattern(Pattern & pattern);
 
 	/**
+	* Set a new value for the _exitDetectionLoop attribute.
+	*
+	* \param[in] exit the new value for the _exitDetectionLoop attribute.
+	*/
+	void setExitDetectionLoop(const bool exit);
+
+	/**
+	* Start the detectionLoop method in a dedicated separate std::thread.
+	*
+	* This method sets _exitDetectionLoop to false;
+	*
+	* \return true if the thread was successfully started, false otherwise.
+	* Possible reason for failing:
+	* - detectionLoop is already running. (thread is not-NULL)
+	* - visionEngine is not initialized.
+	*/
+	bool startDetectionThread();
+
+	/**
+	* Stop the previously launched detectionThread.
+	* 
+	* This method will set _exitDetectionLoop to true, and wait for thread 
+	* completion.
+	* 
+	* \return true if the thread was successfully terminated, false otherwise.
+	* Possible reasons for failing:
+	* - No thread was running.
+	*/
+	bool stopDetectionThread();
+
+	/**
 	* Unregister a Pattern from detection by the VisionEngine in frames captured
 	* by the _camera.
 	*
@@ -150,6 +194,10 @@ public:
 	* - acquires a new frame from the camera.
 	* - search for all registered patterns in the capture frame.
 	* - update the status and position of the detected patterns.
+	* 
+	* Concurrent call to this method are prevented with the 
+	* _detectionLoopMutex. Consequently, this method may block if the
+	* mutex is already locked by another thread.
 	*
 	* The loop of this method is an infinite loop that can only be broken by 
 	* setting the _exitDetectionLoop to true.
@@ -157,4 +205,11 @@ public:
 	* VisionEngine.
 	*/
 	void detectionLoop();
+
+	/**
+	* Retrieve the current value of the _exitDetectionLoop attribute.
+	*
+	* \return the boolean value of _exitDetectionLoop.
+	*/
+	bool doesExitDetectionLoop() const;
 };
