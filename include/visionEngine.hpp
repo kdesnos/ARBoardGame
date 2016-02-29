@@ -5,8 +5,10 @@
 
 #include <iostream>
 #include <list>
+#include <atomic>
 
 #include "opencv2/opencv.hpp"
+#include "opencv2/xfeatures2d.hpp"
 
 #include "pattern.hpp"
 
@@ -47,6 +49,36 @@ protected:
 	* directly as the list template type argument.
 	*/
 	std::list<std::reference_wrapper<Pattern>> _patterns;
+
+	/**
+	* Minimum Hessian distance used by the SURF _detector.
+	* After a few experiments, 400 was found to be a good value.
+	* But it is still a magic number that should be refined.
+	*/
+	static const int MIN_HESSIAN = 400;
+
+	/**
+	* SURF detector used by the VisionEngine
+	*/
+	cv::Ptr<cv::xfeatures2d::SURF> _detector;
+
+	/**
+	* This method uses the _descriptor of the VisionEngine to compute keypoints
+	* and descriptors of the given SURFDetectable object.
+	*
+	* \param[in,out] detectable the SURFDetectable object whose keypoints and 
+	* descriptors are computed.
+	* 
+	*/
+	void _computeKeypointsAndDescriptors(SURFDetectable & detectable) const;
+
+	/**
+	* This boolean value is used to exit the detectionLoop
+	* when the value of this variable is set to true.
+	* If this boolean value is set to true before calling the detectionLoop, 
+	* the loop will execute once and exit (do {} while(_exitDetectionLoop)).
+	*/
+	atomic_bool _exitDetectionLoop;
 
 public:
 	/**
@@ -111,4 +143,18 @@ public:
 	* detect.
 	*/
 	bool unregisterPattern(const Pattern & pattern);
+
+	/**
+	* Detection loop of the VisionEngine.
+	* This loop iteratively:
+	* - acquires a new frame from the camera.
+	* - search for all registered patterns in the capture frame.
+	* - update the status and position of the detected patterns.
+	*
+	* The loop of this method is an infinite loop that can only be broken by 
+	* setting the _exitDetectionLoop to true.
+	* The method will immediately terminate if it is called on a unitialized 
+	* VisionEngine.
+	*/
+	void detectionLoop();
 };

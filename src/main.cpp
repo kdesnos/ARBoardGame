@@ -625,6 +625,8 @@ int main(int, char**)
         images.push_back(im);
     }
 
+	ve.detectionLoop();
+
     for(;;)
     {
         Mat img_scene;

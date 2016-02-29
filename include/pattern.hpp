@@ -12,12 +12,13 @@
 
 #include "opencv2/opencv.hpp"
 
+#include "surfDetectable.hpp"
 #include "nonAssignable.hpp"
 
 /**
 * Pattern class used for detecting images with the VisionEngine
 */
-class Pattern : public NonAssignable
+class Pattern : public SURFDetectable, virtual NonAssignable
 {
 
 public:
@@ -56,11 +57,6 @@ protected:
 	* (enforced by the constructor).
 	*/
 	const std::string _name;
-
-	/**
-	* Image loaded as the test pattern.
-	*/
-	const cv::Mat _image;
 
 private:
 	static std::list<std::reference_wrapper<Pattern &>> _allPatterns;

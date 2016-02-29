@@ -2,7 +2,7 @@
 #include "pattern.hpp"
 
 Pattern::Pattern(const std::string & name, const std::string & path) throw(...) :
-	_name(name), _image(cv::imread(path, cv::IMREAD_GRAYSCALE))
+	_name(name), SURFDetectable(cv::imread(path, cv::IMREAD_GRAYSCALE))
 {
 	// Check whether the image was successfully opened during initialization.
 	if (!_image.data) {
