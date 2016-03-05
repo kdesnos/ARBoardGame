@@ -625,11 +625,12 @@ int main(int, char**)
         images.push_back(im);
     }
 
-	ve.setExitDetectionLoop(true);
-	ve.detectionLoop();
+	ve.executeDetectionLoopOnce();
 
 	cout << "Start: " << ve.startDetectionThread() << endl;
-	// std::this_thread::sleep_for(std::chrono::seconds(1));
+	std::this_thread::sleep_for(std::chrono::milliseconds(200));
+	cout << "Start: " << ve.startDetectionThread() << endl;
+	// std::this_thread::sleep_for(std::chrono::milliseconds(200));
 	// cout << "Stop: " << ve.stopDetectionThread() << endl;
 
 

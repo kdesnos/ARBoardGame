@@ -42,10 +42,10 @@ protected:
 	bool _initialized;
 
 	/**
-	* Vector containing the references to the Pattern to detect in the images 
+	* Vector containing the references to the Pattern to detect in the images
 	* captured from the _camera.
-	* std::reference_wrapper<Pattern> is used instead of <Pattern> because 
-	* references cannot be directly stored in c++ container, and because 
+	* std::reference_wrapper<Pattern> is used instead of <Pattern> because
+	* references cannot be directly stored in c++ container, and because
 	* Pattern derives from NonAssignable, which prevents it from being used
 	* directly as the list template type argument.
 	*/
@@ -67,31 +67,30 @@ protected:
 	* This method uses the _descriptor of the VisionEngine to compute keypoints
 	* and descriptors of the given SURFDetectable object.
 	*
-	* \param[in,out] detectable the SURFDetectable object whose keypoints and 
+	* \param[in,out] detectable the SURFDetectable object whose keypoints and
 	* descriptors are computed.
-	* 
+	*
 	*/
 	void _computeKeypointsAndDescriptors(SURFDetectable & detectable) const;
 
 	/**
 	* This boolean value is used to exit the detectionLoop
 	* when the value of this variable is set to true.
-	* If this boolean value is set to true before calling the detectionLoop, 
+	* If this boolean value is set to true before calling the detectionLoop,
 	* the loop will execute once and exit (do {} while(_exitDetectionLoop)).
 	*/
 	atomic_bool _exitDetectionLoop;
-
-	/**
-	* Mutex used to know if the detectionLoop() is currently running in any 
-	* thread.
-	*/
-	std::mutex _detectionLoopMutex;
 
 
 	/**
 	* Thread used to run the detectionLoop when startDetection loop is called.
 	*/
 	std::thread * _detectionLoopThread;
+
+	/**
+	* Mutex used to prevent multiple launches of the detection loop in parallel.
+	*/
+	std::mutex _detectionLoopLaunchMutex;
 
 public:
 	/**
@@ -134,22 +133,26 @@ public:
 	* Register a Pattern for detection by the VisionEngine in frames captured by
 	* the _camera.
 	*
-	* The method will immediately compute the keypoints associated to the given 
+	* The method will immediately compute the keypoints associated to the given
 	* Pattern and add it to _patterns.
 	*
 	* \param[in] pattern a reference to the Pattern to detect.
 	*
-	* \return true if the registeration was successful (or was already done 
+	* \return true if the registeration was successful (or was already done
 	* before), false otherwise. Possible reasons for failing: none listed yet.
 	*/
 	bool registerPattern(Pattern & pattern);
 
 	/**
-	* Set a new value for the _exitDetectionLoop attribute.
+	* Execute the detectionLoop() once in the current thread.
 	*
-	* \param[in] exit the new value for the _exitDetectionLoop attribute.
+	* \return true if the thread was successfully started, false otherwise.
+	* Possible reason for failing:
+	* - detectionLoop is already running.
+	* - there is a concurrent attempt to launch the loop.
+	* - visionEngine is not initialized.
 	*/
-	void setExitDetectionLoop(const bool exit);
+	bool executeDetectionLoopOnce();
 
 	/**
 	* Start the detectionLoop method in a dedicated separate std::thread.
@@ -158,17 +161,18 @@ public:
 	*
 	* \return true if the thread was successfully started, false otherwise.
 	* Possible reason for failing:
-	* - detectionLoop is already running. (thread is not-NULL)
+	* - detectionLoop is already running.
+	* - there is a concurrent attempt to launch the loop.
 	* - visionEngine is not initialized.
 	*/
 	bool startDetectionThread();
 
 	/**
 	* Stop the previously launched detectionThread.
-	* 
-	* This method will set _exitDetectionLoop to true, and wait for thread 
+	*
+	* This method will set _exitDetectionLoop to true, and wait for thread
 	* completion.
-	* 
+	*
 	* \return true if the thread was successfully terminated, false otherwise.
 	* Possible reasons for failing:
 	* - No thread was running.
@@ -179,32 +183,29 @@ public:
 	* Unregister a Pattern from detection by the VisionEngine in frames captured
 	* by the _camera.
 	*
-	* \param[in] pattern a reference to the Pattern whose detection is no 
+	* \param[in] pattern a reference to the Pattern whose detection is no
 	* longer wanted.
 	*
-	* \return true if the unregisteration was successful false otherwise. 
-	* Possible reasons for failing: pattern is not in the list _patterns to 
+	* \return true if the unregisteration was successful false otherwise.
+	* Possible reasons for failing: pattern is not in the list _patterns to
 	* detect.
 	*/
 	bool unregisterPattern(const Pattern & pattern);
 
+private:
 	/**
-	* Detection loop of the VisionEngine.
-	* This loop iteratively:
-	* - acquires a new frame from the camera.
-	* - search for all registered patterns in the capture frame.
-	* - update the status and position of the detected patterns.
-	* 
-	* Concurrent call to this method are prevented with the 
-	* _detectionLoopMutex. Consequently, this method may block if the
-	* mutex is already locked by another thread.
-	*
-	* The loop of this method is an infinite loop that can only be broken by 
-	* setting the _exitDetectionLoop to true.
-	* The method will immediately terminate if it is called on a unitialized 
-	* VisionEngine.
+	* Mutex used to know if the detectionLoop() is currently running in any
+	* thread.
 	*/
-	void detectionLoop();
+	std::mutex _detectionLoopMutex;
+
+	/**
+	* Set a new value for the _exitDetectionLoop attribute.
+	*
+	* \param[in] exit the new value for the _exitDetectionLoop attribute.
+	*/
+	void setExitDetectionLoop(const bool exit);
+
 
 	/**
 	* Retrieve the current value of the _exitDetectionLoop attribute.
@@ -212,4 +213,23 @@ public:
 	* \return the boolean value of _exitDetectionLoop.
 	*/
 	bool doesExitDetectionLoop() const;
+
+	/**
+	* Detection loop of the VisionEngine.
+	* This loop iteratively:
+	* - acquires a new frame from the camera.
+	* - search for all registered patterns in the capture frame.
+	* - update the status and position of the detected patterns.
+	*
+	* Concurrent call to this method are prevented with the
+	* _detectionLoopMutex. Consequently, this method may block if the
+	* mutex is already locked by another thread. This method is
+	* called using startDetectionThread() or executeDetectionLoop().
+	*
+	* The loop of this method is an infinite loop that can only be broken by
+	* setting the _exitDetectionLoop to true.
+	* The method will immediately terminate if it is called on a unitialized
+	* VisionEngine.
+	*/
+	void detectionLoop();
 };

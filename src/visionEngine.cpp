@@ -12,7 +12,7 @@ void VisionEngine::_computeKeypointsAndDescriptors(SURFDetectable & detectable) 
 VisionEngine::VisionEngine(ostream & logger) :
 	_logger(logger), _camera(NULL), _initialized(false),
 	_exitDetectionLoop(false), _detectionLoopMutex(),
-	_detectionLoopThread(NULL),
+	_detectionLoopLaunchMutex(), _detectionLoopThread(NULL),
 	_detector(cv::xfeatures2d::SURF::create(MIN_HESSIAN))
 {
 	LOG(_logger, "Instantiate VisionEngine");
@@ -77,6 +77,35 @@ bool VisionEngine::registerPattern(Pattern & pattern)
 	return true;
 }
 
+bool VisionEngine::executeDetectionLoopOnce()
+{
+	LOG(_logger, "Starting detectionLoop once.");
+
+	// Get both detectionLoop and launcherMutex simultaneously
+	unique_lock<mutex> lockDetectionLoopLaunchMutex = unique_lock<mutex>(_detectionLoopLaunchMutex, defer_lock);
+	unique_lock<mutex> lockDetectionLoopMutex = unique_lock<mutex>(_detectionLoopMutex, defer_lock);
+
+	// Try to lock both mutexes simultaneously
+	if (try_lock(lockDetectionLoopLaunchMutex, lockDetectionLoopMutex) != -1) {
+		// Lock failed
+		LOG(_logger, "Failed to start detection thread because detectionLoop is already being launched or running.");
+		return false;
+	}
+
+	// Unlock detectionLoopMutex
+	lockDetectionLoopMutex.unlock();
+
+	// Set exitDetectionLoop to true
+	setExitDetectionLoop(true);
+
+	// Execute the detection loop.
+	detectionLoop();
+
+	LOG(_logger, "DetectionLoop was successfully executed once.");
+
+	return true;
+}
+
 void VisionEngine::setExitDetectionLoop(const bool exit)
 {
 	_exitDetectionLoop = exit;
@@ -85,6 +114,21 @@ void VisionEngine::setExitDetectionLoop(const bool exit)
 bool VisionEngine::startDetectionThread()
 {
 	LOG(_logger, "Starting detection thread.");
+
+	// Get both detectionLoop and launcherMutex simultaneously
+	unique_lock<mutex> lockDetectionLoopLaunchMutex = unique_lock<mutex>(_detectionLoopLaunchMutex, defer_lock);
+	unique_lock<mutex> lockDetectionLoopMutex = unique_lock<mutex>(_detectionLoopMutex, defer_lock);
+
+	// Try to lock both mutexes simultaneously
+	if (try_lock(lockDetectionLoopLaunchMutex, lockDetectionLoopMutex) != -1) {
+		// Lock failed
+		LOG(_logger, "Failed to start detection thread because detectionLoop is already being launched or running.");
+		return false;
+	}
+
+	// Unlock detectionLoopMutex
+	lockDetectionLoopMutex.unlock();
+
 	// Check initialization
 	if (!isInitialized()) {
 		LOG(_logger, "Failed to start detection thread because VisionEngine was not initialized.");
@@ -93,6 +137,7 @@ bool VisionEngine::startDetectionThread()
 
 	// Check that loop is not already running
 	if (_detectionLoopThread != NULL) {
+		// Should never happen thanks to mutexes
 		LOG(_logger, "Failed to start detection thread because detectionLoop is already running.");
 		return false;
 	}
@@ -107,6 +152,8 @@ bool VisionEngine::startDetectionThread()
 
 	// Everything went well
 	return true;
+
+	// _detectionLoopLaunchMutex automatically unlocked thanks to unique_lock destruction
 }
 
 bool VisionEngine::stopDetectionThread()
