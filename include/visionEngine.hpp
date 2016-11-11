@@ -52,6 +52,12 @@ protected:
 	std::list<std::reference_wrapper<Pattern>> _patterns;
 
 	/**
+	* Mutex used to prevent concurrent accesses and modifications of the _patterns
+	* attribute.
+	*/
+	std::mutex _patternsMutex;
+
+	/**
 	* Minimum Hessian distance used by the SURF _detector.
 	* After a few experiments, 400 was found to be a good value.
 	* But it is still a magic number that should be refined.
@@ -135,6 +141,8 @@ public:
 	*
 	* The method will immediately compute the keypoints associated to the given
 	* Pattern and add it to _patterns.
+	* The method will wait for the _patternMutex to be unlocked to actually
+	* modify the _pattern attribute.
 	*
 	* \param[in] pattern a reference to the Pattern to detect.
 	*
@@ -183,6 +191,9 @@ public:
 	* Unregister a Pattern from detection by the VisionEngine in frames captured
 	* by the _camera.
 	*
+	* The method will wait for the _patternMutex to be unlocked to actually
+	* modify the _pattern attribute.
+	*
 	* \param[in] pattern a reference to the Pattern whose detection is no
 	* longer wanted.
 	*
@@ -225,6 +236,9 @@ private:
 	* _detectionLoopMutex. Consequently, this method may block if the
 	* mutex is already locked by another thread. This method is
 	* called using startDetectionThread() or executeDetectionLoop().
+	*
+	* The method will wait for the _patternMutex to be unlocked iterate on the
+	* the patterns to detect. (and will lock it during iterations).
 	*
 	* The loop of this method is an infinite loop that can only be broken by
 	* setting the _exitDetectionLoop to true.

@@ -13,6 +13,7 @@ VisionEngine::VisionEngine(ostream & logger) :
 	_logger(logger), _camera(NULL), _initialized(false),
 	_exitDetectionLoop(false), _detectionLoopMutex(),
 	_detectionLoopLaunchMutex(), _detectionLoopThread(NULL),
+	_patternsMutex(),
 	_detector(cv::xfeatures2d::SURF::create(MIN_HESSIAN))
 {
 	LOG(_logger, "Instantiate VisionEngine");
@@ -29,7 +30,7 @@ VisionEngine::~VisionEngine() {
 	if (isInitialized()) {
 		delete _camera;
 	}
-	
+
 	// Flush the logger.
 	_logger.flush();
 }
@@ -71,10 +72,15 @@ bool VisionEngine::registerPattern(Pattern & pattern)
 	// Compute Keypoints and Descriptors for this pattern
 	_computeKeypointsAndDescriptors(pattern);
 
+	// Get the mutex for modifying the _patterns attribute
+	lock_guard<mutex> lockPatternMutex(_patternsMutex);
+
 	// Put the pattern in _pattern list
 	_patterns.push_back(pattern);
 
 	return true;
+
+	// Automatically unlock the mutex.
 }
 
 bool VisionEngine::executeDetectionLoopOnce()
@@ -132,7 +138,7 @@ bool VisionEngine::startDetectionThread()
 	// Check initialization
 	if (!isInitialized()) {
 		LOG(_logger, "Failed to start detection thread because VisionEngine was not initialized.");
-			return false;
+		return false;
 	}
 
 	// Check that loop is not already running
@@ -182,6 +188,9 @@ bool VisionEngine::stopDetectionThread()
 
 bool VisionEngine::unregisterPattern(const Pattern & pattern)
 {
+	// Get the mutex for modifying the _patterns attribute
+	lock_guard<mutex> lockPatternMutex(_patternsMutex);
+
 	const size_t originalSize = _patterns.size();
 	// Lambda expression used because operator== of pattern is masked by
 	// std::reference_wrapper.
@@ -196,6 +205,8 @@ bool VisionEngine::unregisterPattern(const Pattern & pattern)
 		+ ((success) ? "Success" : "Failure"));
 
 	return success;
+
+	// Automatically unlock the mutex.
 }
 
 void VisionEngine::detectionLoop()
@@ -208,7 +219,7 @@ void VisionEngine::detectionLoop()
 	// Exit immediately if the VisionEngine was not initialized
 	if (!isInitialized()) {
 		LOG(_logger, "Unexpected end of detection loop caused by an uninitialized VisionEngine")
-		return;
+			return;
 	}
 
 	// Enter the loop
