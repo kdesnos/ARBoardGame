@@ -65,6 +65,14 @@ protected:
 	static const int MIN_HESSIAN = 400;
 
 	/**
+	* Detection threshold used in the detection loop.
+	* A pattern is detected if the correllation calculus between the pattern
+	* image and the pattern extracted from a frame is higher than the given 
+	* threshold.
+	*/
+	static const int DETECTION_CORRELATION_THRESHOLD = 0.4;
+
+	/**
 	* SURF detector used by the VisionEngine
 	*/
 	cv::Ptr<cv::xfeatures2d::SURF> _detector;
@@ -78,6 +86,14 @@ protected:
 	*
 	*/
 	void _computeKeypointsAndDescriptors(SURFDetectable & detectable) const;
+
+	/**
+	* This method matches the given pattern in the given scene.
+	*
+	* When succeeding, the position and detection attributes of the pattern 
+	* are updated.
+	*/
+	void _matchPatternInFrame(Pattern & pattern, SURFDetectable & scene) const;
 
 	/**
 	* This boolean value is used to exit the detectionLoop
